@@ -13,9 +13,20 @@
         android:theme="@style/Theme.FinalProject"
         tools:targetApi="31">
         <activity
+            android:name=".AccountActivity"
+            android:exported="false"
+            android:theme="@style/Theme.FinalProject" />
+        <activity
+            android:name=".TodoActivity"
+            android:exported="false"
+            android:theme="@style/Theme.FinalProject" />
+        <activity
+            android:name=".MemoActivity"
+            android:exported="false"
+            android:theme="@style/Theme.FinalProject" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.FinalProject">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
