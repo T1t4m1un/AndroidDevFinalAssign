@@ -363,7 +363,7 @@ fun EditTodoScreen(setTodos: (List<Todo>) -> Unit, todoList: List<Todo>, idx: In
             Button(
                 onClick = {
                     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-                    val monthMillis = Instant.ofEpochMilli(datePickerState.displayedMonthMillis)
+                    val monthMillis = Instant.ofEpochMilli(datePickerState.selectedDateMillis!!)
                         .atZone(ZoneId.systemDefault())
                         .toLocalDate()
                         .format(formatter)
