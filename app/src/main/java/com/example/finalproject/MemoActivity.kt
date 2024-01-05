@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -60,7 +62,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 
-data class Memo(val title: String, val creationTime: String, val content: String)
+data class Memo(val title: String, val creationTime: String, val content: String, val category: String? = null)
 
 var memoList by mutableStateOf(
     listOf(
@@ -166,8 +168,9 @@ fun DefaultText(modifier: Modifier) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MemoTopBar(onSortSelected: (String) -> Unit) {
+fun MemoTopBar(onSortSelected: (String) -> Unit, setFilter: (String?) -> Unit) {
     var showMenu by remember { mutableStateOf(false) }
+    var handleFilterByCategory by remember { mutableStateOf(false) }
 
     TopAppBar(
         modifier = Modifier.background(Color.Blue),
@@ -192,9 +195,30 @@ fun MemoTopBar(onSortSelected: (String) -> Unit) {
                         showMenu = false
                     },
                     text = { Text("按标题排序") })
+                DropdownMenuItem(
+                    text = { Text("按分类筛选") },
+                    onClick = { handleFilterByCategory = true; showMenu = false }
+                )
             }
         }
     )
+
+    if (handleFilterByCategory) {
+        AlertDialog(
+            onDismissRequest = { handleFilterByCategory = false },
+            confirmButton = {},
+            text = {
+                LazyColumn {
+                    items(memoList.map { x -> x.category }.toSet().toList().filterNotNull()) { x ->
+                        Text(
+                            text = x,
+                            modifier = Modifier.clickable { handleFilterByCategory = false; setFilter(x) }
+                        )
+                    }
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -207,7 +231,6 @@ fun MemoFloatingButton(navController: NavController) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MemoScreen(navController: NavController) {
     val onSortSelected = { sortType: String ->
@@ -217,15 +240,18 @@ fun MemoScreen(navController: NavController) {
             else -> memoList
         }
     }
+    var filter by remember { mutableStateOf<String?>(null) }
+    val setFilter = { x: String? -> filter = x }
 
     Scaffold(
-        topBar = { MemoTopBar(onSortSelected) },
+        topBar = { MemoTopBar(onSortSelected, setFilter = setFilter) },
         floatingActionButton = { MemoFloatingButton(navController) }
     ) {innerPadding ->
         if (memoList.isEmpty()) {
             DefaultText(modifier = Modifier.padding(innerPadding))
         } else {
-            MemoList(memoList = memoList, modifier = Modifier.padding(innerPadding), navController)
+            val memoList = if (filter != null) memoList.filter { it.category == filter } else memoList
+            MemoList(memoList = memoList, modifier = Modifier.padding(innerPadding), navController = navController)
         }
     }
 }
@@ -237,6 +263,7 @@ fun MemoEditScreen(idx: Int? = null, navController: NavController) {
     val memo = if (idx != null) memoList[idx] else null
     var title by remember { mutableStateOf(memo?.title ?: "") }
     var content by remember { mutableStateOf(memo?.content ?: "") }
+    var category by remember { mutableStateOf(memo?.category ?: "") }
 
     val onSave = {
         val current = LocalDateTime.now()
@@ -245,7 +272,7 @@ fun MemoEditScreen(idx: Int? = null, navController: NavController) {
 
         val tmpList = memoList.toMutableList()
         if (idx == null) {
-            val newMemo = Memo(title, datetime, content)
+            val newMemo = Memo(title, datetime, content, category.ifEmpty { null })
             tmpList.add(newMemo)
         } else {
             tmpList[idx] = Memo(title, datetime, content)
@@ -281,7 +308,16 @@ fun MemoEditScreen(idx: Int? = null, navController: NavController) {
                 value = title,
                 onValueChange = { title = it },
                 label = { Text("标题") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = category,
+                onValueChange = { category = it },
+                label = { Text("分类") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
@@ -291,7 +327,7 @@ fun MemoEditScreen(idx: Int? = null, navController: NavController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                maxLines = 10
+                singleLine = false
             )
         }
     }
