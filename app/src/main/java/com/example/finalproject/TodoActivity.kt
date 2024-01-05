@@ -54,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -293,17 +294,17 @@ fun TodoScreen(todos: List<Todo>, setTodos: (List<Todo>) -> Unit, navController:
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditTodoScreen(setTodos: (List<Todo>) -> Unit, todoList: List<Todo>, todo: Todo? = null) {
+fun EditTodoScreen(setTodos: (List<Todo>) -> Unit, todoList: List<Todo>, idx: Int? = null, navController: NavController) {
 
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-    var title by remember { mutableStateOf(todo?.title ?: "") }
-    var category by remember { mutableStateOf(todo?.category ?: "") }
+    var title by remember { mutableStateOf(if (idx == null) "" else todoList[idx].title) }
+    var category by remember { mutableStateOf(if (idx == null) "" else todoList[idx].category) }
     val dateTime by remember {
         mutableStateOf(
-            if (todo == null) {
+            if (idx == null) {
                 LocalDateTime.now()
             } else {
-                LocalDateTime.parse(todo.datetime, formatter)
+                LocalDateTime.parse(todoList[idx].datetime, formatter)
             }
         )
     }
@@ -361,6 +362,7 @@ fun EditTodoScreen(setTodos: (List<Todo>) -> Unit, todoList: List<Todo>, todo: T
             // 添加其他必要的按钮或逻辑
             Button(
                 onClick = {
+                    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
                     val monthMillis = Instant.ofEpochMilli(datePickerState.displayedMonthMillis)
                         .atZone(ZoneId.systemDefault())
                         .toLocalDate()
@@ -368,13 +370,14 @@ fun EditTodoScreen(setTodos: (List<Todo>) -> Unit, todoList: List<Todo>, todo: T
                     val newTodo = Todo(
                         title = title,
                         category = category,
-                        datetime = "$monthMillis ${timePickerState.hour} ${timePickerState.minute}"
+                        datetime = "$monthMillis ${timePickerState.hour}:${timePickerState.minute}"
                     )
-                    if (todo == null) {
-                        setTodos(todoList.map { x -> if (x == todo) newTodo else x })
-                    } else {
+                    if (idx == null) {
                         setTodos(todoList + newTodo)
+                    } else {
+                        setTodos(todoList.map { x -> if (x == todoList[idx]) newTodo else x })
                     }
+                    navController.navigate("TodoHome")
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -397,7 +400,11 @@ fun TodoApp() {
         Todo("jyyLab", "LAB", "2024-02-09 14:43"),
         Todo("CS144", "LAB", "2024-01-03 18:30"),
     ) }
-    val setTodos = { todoList: List<Todo> -> todos = todoList as SnapshotStateList<Todo> }
+    val setTodos = { todoList: List<Todo> ->
+        todos.clear()
+        todos.addAll(todoList)
+        Unit
+    }
 
     val navController = rememberNavController()
     NavHost(
@@ -405,10 +412,10 @@ fun TodoApp() {
         startDestination = "TodoHome"
     ) {
         composable("TodoHome") { TodoScreen(todos = todos, setTodos = setTodos, navController = navController) }
-        composable("NewTodo") { EditTodoScreen(setTodos = setTodos, todoList = todos) }
+        composable("NewTodo") { EditTodoScreen(setTodos = setTodos, todoList = todos, navController = navController) }
         composable("EditTodo/{todoId}") { backStackEntry ->
             val todoId = backStackEntry.arguments?.getString("todoId")?.toInt()
-            EditTodoScreen(setTodos = setTodos, todoList = todos, todo = todos[todoId!!])
+            EditTodoScreen(setTodos = setTodos, todoList = todos, idx = todoId, navController = navController)
         }
     }
 }
